@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sunside — which side to sit on</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1E2530">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sunside">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---------- calm palette ---------- */
+  :root{
+    --bg:#EEF1F0;
+    --bg-soft:#E1E7E3;
+    --panel:#FFFFFF;
+    --panel-border:#D3DCD6;
+    --text:#26302B;
+    --text-mute:#6E7A73;
+    --sand:#C08F52;
+    --sage:#5B8A72;
+    --dusk:#B97E6E;
+    --shadow: 0 1px 0 rgba(0,0,0,0.03);
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1E2530;
+      --bg-soft:#262E3A;
+      --panel:#242C38;
+      --panel-border:#37414D;
+      --text:#E8E6DF;
+      --text-mute:#8B9691;
+      --sand:#D9A868;
+      --sage:#7FA98D;
+      --dusk:#C97B6D;
+      --shadow: 0 1px 0 rgba(0,0,0,0.18);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1E2530;
+    --bg-soft:#262E3A;
+    --panel:#242C38;
+    --panel-border:#37414D;
+    --text:#E8E6DF;
+    --text-mute:#8B9691;
+    --sand:#D9A868;
+    --sage:#7FA98D;
+    --dusk:#C97B6D;
+    --shadow: 0 1px 0 rgba(0,0,0,0.18);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height:100vh;
+    min-height: 100dvh;
+    display:flex;
+    justify-content:center;
+    padding: max(24px, env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom));
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+
+  .wrap{ width:100%; max-width: 460px; }
+
+  header{ margin-bottom: 20px; }
+  header .kicker{ color: var(--sage); font-size: 0.78rem; letter-spacing: 0.03em; }
+  h1{ font-size: 1.5rem; line-height:1.15; margin: 4px 0 6px; font-weight: 700; }
+  header p{ color: var(--text-mute); margin:0; font-size:0.9rem; max-width: 40ch; }
+
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  label{ display:block; font-size: 0.76rem; color: var(--text-mute); margin-bottom: 6px; margin-top: 14px; }
+  label:first-of-type{ margin-top:0; }
+
+  input[type="text"], input[type="datetime-local"], select{
+    width:100%;
+    background: var(--bg-soft);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  input:focus, select:focus{ outline: 2px solid var(--sage); outline-offset: 1px; }
+
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .swap-row{ display:flex; align-items:center; gap:8px; margin-top: 12px; }
+  button{ font-family: inherit; cursor:pointer; border:none; }
+  .btn-swap{
+    background: var(--bg-soft); color: var(--text-mute);
+    border:1px solid var(--panel-border); border-radius: 8px;
+    padding: 9px 10px; font-size: 0.85rem;
+  }
+  .btn-swap:hover{ color:var(--text); }
+
+  .pref-toggle{ display:flex; gap:8px; margin-top: 14px; }
+  .pref-toggle button{
+    flex:1; padding: 11px; border-radius: 10px;
+    background: var(--bg-soft); border: 1px solid var(--panel-border);
+    color: var(--text-mute); font-size: 0.85rem;
+  }
+  .pref-toggle button.active{ background: var(--sage); border-color: var(--sage); color: #fff; }
+
+  .btn-primary{
+    width:100%; margin-top: 18px;
+    background: var(--sage); color: #fff;
+    font-weight: 700; font-size: 1rem;
+    padding: 15px; border-radius: 12px;
+  }
+  .btn-primary:active{ transform: translateY(1px); }
+
+  .weather-live{ display:flex; align-items:center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .weather-live button{
+    background:none; color: var(--sage); font-size: 0.8rem;
+    padding: 4px 0; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .weather-note{ font-size: 0.75rem; color: var(--text-mute); }
+
+  #result{ display:none; }
+  #result.show{ display:block; }
+
+  .verdict{ text-align:center; padding: 6px 0 14px; }
+  .verdict .side{ font-size: 1.9rem; font-weight: 700; color: var(--sage); }
+  .verdict .sub{ color: var(--text-mute); font-size: 0.85rem; margin-top: 2px; }
+
+  svg.diagram{ display:block; margin: 0 auto 12px; }
+
+  .stats{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .stat{ background: var(--bg-soft); border-radius: 10px; padding: 10px 12px; }
+  .stat .label{ font-size: 0.66rem; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat .value{ font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; margin-top: 2px; }
+
+  .reasoning{
+    margin-top: 14px; font-size: 0.88rem; color: var(--text-mute);
+    line-height: 1.55; border-top: 1px solid var(--panel-border); padding-top: 12px;
+  }
+
+  .error{ color: var(--dusk); font-size: 0.85rem; margin-top: 10px; display:none; }
+  .error.show{ display:block; }
+
+  .install-banner{
+    display:none;
+    align-items:center; justify-content:space-between; gap: 10px;
+    background: var(--bg-soft); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+    font-size: 0.85rem;
+  }
+  .install-banner.show{ display:flex; }
+  .install-banner button{
+    background: var(--sage); color:#fff; border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; white-space:nowrap;
+  }
+
+  datalist{ display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker mono">SUNSIDE · NAIROBI</div>
+    <h1>Which side should you sit on?</h1>
+    <p>Enter your route and travel time. Sunside works out where the sun will be and tells you which side of the bus keeps you out of it.</p>
+  </header>
+
+  <div class="install-banner" id="installBanner">
+    <span>Install Sunside on your home screen for quick access.</span>
+    <button id="installBtn" type="button">Install</button>
+  </div>
+
+  <div class="card">
+    <label for="from">From</label>
+    <input type="text" id="from" list="places" placeholder="e.g. Rongai" autocomplete="off">
+
+    <div class="swap-row">
+      <button class="btn-swap" id="swapBtn" type="button">⇅ swap</button>
+    </div>
+
+    <label for="to">To</label>
+    <input type="text" id="to" list="places" placeholder="e.g. CBD" autocomplete="off">
+
+    <datalist id="places"></datalist>
+
+    <label for="whenInput">When are you travelling?</label>
+    <div class="row2">
+      <input type="datetime-local" id="whenInput">
+      <button class="btn-swap" id="nowBtn" type="button" style="height:100%;">use now</button>
+    </div>
+
+    <label for="weather">Sky conditions</label>
+    <select id="weather">
+      <option value="clear">Clear / sunny</option>
+      <option value="partly">Partly cloudy</option>
+      <option value="overcast">Overcast</option>
+      <option value="rain">Rainy</option>
+    </select>
+    <div class="weather-live">
+      <button type="button" id="liveWeatherBtn">use live sky conditions</button>
+      <span class="weather-note" id="weatherNote"></span>
+    </div>
+
+    <label>Your preference</label>
+    <div class="pref-toggle">
+      <button type="button" id="avoidBtn" class="active" data-mode="avoid">Keep me out of the sun</button>
+      <button type="button" id="seekBtn" data-mode="seek">I want the sun</button>
+    </div>
+
+    <button class="btn-primary" id="computeBtn" type="button">Find my seat</button>
+    <div class="error" id="errorBox"></div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="verdict">
+      <div class="side" id="verdictSide">—</div>
+      <div class="sub" id="verdictSub"></div>
+    </div>
+
+    <svg class="diagram" id="diagram" width="220" height="120" viewBox="0 0 220 120"></svg>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Sun altitude</div>
+        <div class="value mono" id="statAlt">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Sun azimuth</div>
+        <div class="value mono" id="statAz">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Route bearing</div>
+        <div class="value mono" id="statBearing">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Sky</div>
+        <div class="value mono" id="statSky">—</div>
+      </div>
+    </div>
+
+    <div class="reasoning" id="reasoning"></div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- PWA install prompt ---------- */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner').classList.remove('show');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+/* ---------- Nairobi area / matatu stage coordinates ---------- */
+const PLACES = {
+  "CBD": [-1.2864, 36.8172], "Westlands": [-1.2648, 36.8027], "Kilimani": [-1.2921, 36.7820],
+  "Kileleshwa": [-1.2793, 36.7783], "Lavington": [-1.2757, 36.7702], "Karen": [-1.3192, 36.7076],
+  "Langata": [-1.3567, 36.7509], "Ongata Rongai": [-1.3980, 36.7580], "Ngong": [-1.3522, 36.6580],
+  "South B": [-1.3105, 36.8298], "South C": [-1.3184, 36.8228], "Buruburu": [-1.2833, 36.8833],
+  "Donholm": [-1.2937, 36.8887], "Umoja": [-1.2789, 36.8975], "Kayole": [-1.2792, 36.9280],
+  "Embakasi": [-1.3234, 36.8940], "Pipeline": [-1.3200, 36.9020], "Utawala": [-1.2944, 36.9600],
+  "JKIA": [-1.3192, 36.9278], "Industrial Area": [-1.3057, 36.8420], "Kasarani": [-1.2231, 36.8977],
+  "Roysambu": [-1.2183, 36.8908], "Zimmerman": [-1.2058, 36.8944], "Githurai": [-1.1867, 36.9004],
+  "Kahawa West": [-1.1815, 36.9256], "Ruaraka": [-1.2489, 36.8778], "Muthaiga": [-1.2500, 36.8181],
+  "Parklands": [-1.2621, 36.8135], "Eastleigh": [-1.2758, 36.8433], "Pangani": [-1.2680, 36.8330],
+  "Ngara": [-1.2760, 36.8214], "Kawangware": [-1.2833, 36.7500], "Dagoretti": [-1.2989, 36.7500],
+  "Waithaka": [-1.3033, 36.7350], "Kikuyu": [-1.2467, 36.6667], "Kabete": [-1.2333, 36.7333],
+  "Ruaka": [-1.2094, 36.7828], "Kiambu": [-1.1714, 36.8356], "Thika": [-1.0333, 37.0693],
+  "Athi River": [-1.4556, 36.9773], "Machakos": [-1.5177, 37.2634], "Ruiru": [-1.1494, 36.9622],
+  "Juja": [-1.0959, 37.0142], "Makadara": [-1.2969, 36.8556], "Hurlingham": [-1.2953, 36.7891]
+};
+const placesList = document.getElementById('places');
+Object.keys(PLACES).sort().forEach(name=>{
+  const opt = document.createElement('option');
+  opt.value = name;
+  placesList.appendChild(opt);
+});
+
+/* ---------- geometry helpers ---------- */
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+const norm360 = d => ((d % 360) + 360) % 360;
+
+function findPlace(nameRaw){
+  const name = nameRaw.trim().toLowerCase();
+  const key = Object.keys(PLACES).find(k => k.toLowerCase() === name);
+  return key ? PLACES[key] : null;
+}
+
+function bearing(lat1,lon1,lat2,lon2){
+  const φ1=toRad(lat1), φ2=toRad(lat2), Δλ=toRad(lon2-lon1);
+  const y = Math.sin(Δλ)*Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  return norm360(toDeg(Math.atan2(y,x)));
+}
+
+/* ---------- solar position (approximate, Meeus-style low-precision formulas) ---------- */
+function sunPosition(date, lat, lon){
+  const J2000 = Date.UTC(2000,0,1,12,0,0);
+  const n = (date.getTime() - J2000) / 86400000;
+
+  const L = norm360(280.460 + 0.9856474*n);
+  const g = norm360(357.528 + 0.9856003*n);
+  const gRad = toRad(g);
+  const lambda = norm360(L + 1.915*Math.sin(gRad) + 0.020*Math.sin(2*gRad));
+  const lambdaRad = toRad(lambda);
+  const epsilon = toRad(23.439 - 0.0000004*n);
+
+  const alphaRad = Math.atan2(Math.cos(epsilon)*Math.sin(lambdaRad), Math.cos(lambdaRad));
+  const deltaRad = Math.asin(Math.sin(epsilon)*Math.sin(lambdaRad));
+
+  const GMST = norm360(280.46061837 + 360.98564736629*n);
+  const LST = norm360(GMST + lon);
+  let H = norm360(LST - toDeg(alphaRad));
+  if(H > 180) H -= 360;
+  const HRad = toRad(H);
+
+  const latRad = toRad(lat);
+  const sinAlt = Math.sin(latRad)*Math.sin(deltaRad) + Math.cos(latRad)*Math.cos(deltaRad)*Math.cos(HRad);
+  const altRad = Math.asin(sinAlt);
+
+  const cosAz = (Math.sin(deltaRad) - Math.sin(latRad)*sinAlt) / (Math.cos(latRad)*Math.cos(altRad));
+  const sinAz = -Math.sin(HRad)*Math.cos(deltaRad)/Math.cos(altRad);
+  const azRad = Math.atan2(sinAz, Math.max(-1,Math.min(1,cosAz)));
+
+  return { altitude: toDeg(altRad), azimuth: norm360(toDeg(azRad)) };
+}
+
+/* ---------- UI wiring ---------- */
+const fromEl = document.getElementById('from');
+const toEl = document.getElementById('to');
+const whenEl = document.getElementById('whenInput');
+const weatherEl = document.getElementById('weather');
+const errorBox = document.getElementById('errorBox');
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function setNow(){
+  const d = new Date();
+  whenEl.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+setNow();
+document.getElementById('nowBtn').addEventListener('click', setNow);
+
+document.getElementById('swapBtn').addEventListener('click', ()=>{
+  const tmp = fromEl.value; fromEl.value = toEl.value; toEl.value = tmp;
+});
+
+let prefMode = 'avoid';
+const avoidBtn = document.getElementById('avoidBtn');
+const seekBtn = document.getElementById('seekBtn');
+avoidBtn.addEventListener('click', ()=>{ prefMode='avoid'; avoidBtn.classList.add('active'); seekBtn.classList.remove('active'); });
+seekBtn.addEventListener('click', ()=>{ prefMode='seek'; seekBtn.classList.add('active'); avoidBtn.classList.remove('active'); });
+
+document.getElementById('liveWeatherBtn').addEventListener('click', async ()=>{
+  const note = document.getElementById('weatherNote');
+  const from = findPlace(fromEl.value);
+  const point = from || PLACES['CBD'];
+  note.textContent = 'checking…';
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${point[0]}&longitude=${point[1]}&current=cloud_cover,weather_code`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const cloud = data.current.cloud_cover;
+    const code = data.current.weather_code;
+    let cond = 'clear';
+    if(code >= 51) cond = 'rain';
+    else if(cloud > 70) cond = 'overcast';
+    else if(cloud > 25) cond = 'partly';
+    weatherEl.value = cond;
+    note.textContent = `live: ${cloud}% cloud cover`;
+  }catch(e){
+    note.textContent = 'could not reach the weather service — check your connection';
+  }
+});
+
+function showError(msg){
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+  document.getElementById('result').classList.remove('show');
+}
+
+/* ---------- diagram drawing ---------- */
+function drawDiagram(recommendedSide, relAngle){
+  const svg = document.getElementById('diagram');
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const cx=110, cy=60;
+
+  const bus = document.createElementNS(ns,'rect');
+  bus.setAttribute('x', cx-24); bus.setAttribute('y', cy-40);
+  bus.setAttribute('width', 48); bus.setAttribute('height', 80);
+  bus.setAttribute('rx', 10);
+  bus.setAttribute('fill', 'none');
+  bus.setAttribute('stroke', 'var(--panel-border)');
+  bus.setAttribute('stroke-width', 2);
+  svg.appendChild(bus);
+
+  const arrow = document.createElementNS(ns,'path');
+  arrow.setAttribute('d', `M ${cx} ${cy-52} l -6 12 h 12 z`);
+  arrow.setAttribute('fill', 'var(--text-mute)');
+  svg.appendChild(arrow);
+
+  [['L', cx-40, 'left'], ['R', cx+40, 'right']].forEach(([label,x,side])=>{
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x', x); t.setAttribute('y', cy+5);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family','IBM Plex Mono, monospace');
+    t.setAttribute('font-size','13');
+    t.setAttribute('fill', side===recommendedSide ? 'var(--sage)' : 'var(--text-mute)');
+    t.textContent = label;
+    svg.appendChild(t);
+    if(side===recommendedSide){
+      const ring = document.createElementNS(ns,'circle');
+      ring.setAttribute('cx', x); ring.setAttribute('cy', cy);
+      ring.setAttribute('r', 14);
+      ring.setAttribute('fill','none');
+      ring.setAttribute('stroke','var(--sage)');
+      ring.setAttribute('stroke-width', 2);
+      svg.appendChild(ring);
+    }
+  });
+
+  // sun icon positioned by relative angle (0 = ahead, 90 = right, 180 = behind, 270 = left)
+  const sunR = 46;
+  const rad = toRad(relAngle);
+  const px = cx + sunR*Math.sin(rad);
+  const py = cy - sunR*Math.cos(rad);
+  const sun = document.createElementNS(ns,'circle');
+  sun.setAttribute('cx', px); sun.setAttribute('cy', py);
+  sun.setAttribute('r', 8);
+  sun.setAttribute('fill', 'var(--sand)');
+  svg.appendChild(sun);
+  for(let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    const ray = document.createElementNS(ns,'line');
+    ray.setAttribute('x1', px+Math.cos(a)*10); ray.setAttribute('y1', py+Math.sin(a)*10);
+    ray.setAttribute('x2', px+Math.cos(a)*14); ray.setAttribute('y2', py+Math.sin(a)*14);
+    ray.setAttribute('stroke', 'var(--sand)');
+    ray.setAttribute('stroke-width', 2);
+    svg.appendChild(ray);
+  }
+}
+
+/* ---------- main compute ---------- */
+document.getElementById('computeBtn').addEventListener('click', ()=>{
+  errorBox.classList.remove('show');
+  const from = findPlace(fromEl.value);
+  const to = findPlace(toEl.value);
+
+  if(!from){ showError(`Don't recognise "${fromEl.value}" — pick a suggested area from the list.`); return; }
+  if(!to){ showError(`Don't recognise "${toEl.value}" — pick a suggested area from the list.`); return; }
+  if(!whenEl.value){ showError('Set a travel date and time.'); return; }
+
+  const when = new Date(whenEl.value);
+  const midLat = (from[0]+to[0])/2, midLon = (from[1]+to[1])/2;
+  const routeBearing = bearing(from[0],from[1],to[0],to[1]);
+  const sun = sunPosition(when, midLat, midLon);
+
+  const skyLabels = {clear:'Clear', partly:'Partly cloudy', overcast:'Overcast', rain:'Rainy'};
+  const sky = weatherEl.value;
+
+  document.getElementById('statAlt').textContent = sun.altitude.toFixed(1)+'°';
+  document.getElementById('statAz').textContent = sun.azimuth.toFixed(1)+'°';
+  document.getElementById('statBearing').textContent = routeBearing.toFixed(1)+'°';
+  document.getElementById('statSky').textContent = skyLabels[sky];
+
+  const verdictSide = document.getElementById('verdictSide');
+  const verdictSub = document.getElementById('verdictSub');
+  const reasoning = document.getElementById('reasoning');
+
+  if(sun.altitude <= 0){
+    verdictSide.textContent = 'Either side';
+    verdictSub.textContent = 'Sun is below the horizon';
+    reasoning.textContent = `At ${when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} the sun is below the horizon on this route, so there's no direct sun on either side. Sit wherever you like.`;
+    drawDiagram(null, 0);
+    document.getElementById('result').classList.add('show');
+    return;
+  }
+
+  const relAngle = norm360(sun.azimuth - routeBearing);
+  const sunSide = (relAngle > 0 && relAngle < 180) ? 'right' : 'left';
+  const shadeSide = sunSide === 'right' ? 'left' : 'right';
+  const recommended = prefMode === 'avoid' ? shadeSide : sunSide;
+
+  let altNote = '';
+  if(sun.altitude > 70) altNote = ' The sun is nearly overhead, though, so seat choice matters less than usual — the difference between sides will be small.';
+  else if(sun.altitude < 20) altNote = ' It\'s low in the sky right now, so expect direct glare through the window rather than just heat.';
+
+  verdictSide.textContent = recommended === 'left' ? 'Left side' : 'Right side';
+  verdictSub.textContent = prefMode === 'avoid' ? 'to stay out of the sun' : 'to catch the sun';
+
+  const weatherPhrase = {
+    clear: 'clear skies, so expect it at full strength',
+    partly: 'some cloud around, which will soften it on and off',
+    overcast: 'heavy cloud cover, so direct sun will be minimal either way',
+    rain: 'rain, so glare shouldn\'t really be a factor on this trip'
+  }[sky];
+
+  reasoning.textContent = `Heading from ${fromEl.value} to ${toEl.value}, you're travelling on a bearing of about ${routeBearing.toFixed(0)}°. `
+    + `The sun sits at roughly ${sun.azimuth.toFixed(0)}° azimuth and ${sun.altitude.toFixed(0)}° above the horizon, which puts it on the ${sunSide} side of the bus relative to your direction of travel. `
+    + `With ${weatherPhrase}.${altNote}`;
+
+  drawDiagram(recommended, relAngle);
+  document.getElementById('result').classList.add('show');
+});
+</script>
+</body>
+</html>
