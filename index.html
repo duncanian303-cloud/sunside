@@ -172,6 +172,41 @@
     background: var(--sage); color:#fff; border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; white-space:nowrap;
   }
 
+  /* ---------- commute alerts ---------- */
+  h2{ font-size: 1.05rem; margin: 0 0 4px; }
+  .hint{ color: var(--text-mute); font-size: 0.85rem; margin: 0 0 14px; line-height: 1.5; }
+  .trip{
+    background: var(--bg-soft); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 12px; margin-bottom: 12px;
+  }
+  .trip .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .trip label{ margin-top: 0; }
+  .trip input[type="text"], .trip input[type="time"], .trip select{ background: var(--panel); }
+  input[type="time"]{
+    width:100%; background: var(--bg-soft); border: 1px solid var(--panel-border);
+    color: var(--text); border-radius: 10px; padding: 12px; font-size: 1rem; font-family: inherit;
+  }
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; margin-top: 10px; }
+  .chip{
+    flex:1; min-width: 38px; padding: 9px 0; border-radius: 8px; font-size: 0.78rem;
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--text-mute);
+  }
+  .chip.on{ background: var(--sage); border-color: var(--sage); color:#fff; }
+  .trip-foot{ display:flex; justify-content: space-between; align-items:center; margin-top: 10px; }
+  .link-btn{ background:none; color: var(--sage); font-size: 0.82rem; padding: 4px 0; text-decoration: underline; text-underline-offset: 2px; }
+  .link-btn.danger{ color: var(--dusk); }
+  .alert-actions{ display:flex; gap: 16px; margin-top: 12px; }
+  .alert-status{ font-size: 0.8rem; color: var(--text-mute); margin-top: 10px; line-height: 1.5; }
+  .alert-status.bad{ color: var(--dusk); }
+
+  /* ---------- live tracker ---------- */
+  .live-status{ display:flex; align-items:center; gap:8px; font-size:0.85rem; color: var(--text-mute); margin: 16px 0 6px; }
+  .live-dot{ width:9px; height:9px; border-radius:50%; background: var(--sage); flex:none; animation: livepulse 1.6s ease-in-out infinite; }
+  .live-dot.idle{ background: var(--text-mute); animation:none; }
+  @keyframes livepulse{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.35; transform:scale(.8); } }
+  @media (prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+  .btn-stop{ background: var(--bg-soft); color: var(--text); border:1px solid var(--panel-border); }
+
   datalist{ display:none; }
 </style>
 </head>
@@ -189,9 +224,36 @@
     <button id="installBtn" type="button">Install</button>
   </div>
 
+  <div class="card" id="liveCard">
+    <h2>Live tracker</h2>
+    <p class="hint" id="liveHint">Uses your phone's GPS to see where you are and which way the bus is heading, then tells you which side the sun is on right now.</p>
+    <button class="btn-primary" id="liveBtn" type="button" style="margin-top:0;">Start live tracking</button>
+    <div id="livePanel" style="display:none;">
+      <div class="live-status"><span class="live-dot" id="liveDot"></span><span id="liveWhere">Finding you…</span></div>
+      <div class="verdict">
+        <div class="side" id="liveSide">—</div>
+        <div class="sub" id="liveSub"></div>
+      </div>
+      <svg class="diagram" id="liveDiagram" width="220" height="120" viewBox="0 0 220 120"></svg>
+      <div class="stats">
+        <div class="stat"><div class="label">Heading</div><div class="value mono" id="liveHeading">—</div></div>
+        <div class="stat"><div class="label">Speed</div><div class="value mono" id="liveSpeed">—</div></div>
+        <div class="stat"><div class="label">Sun altitude</div><div class="value mono" id="liveAlt">—</div></div>
+        <div class="stat"><div class="label">Sun azimuth</div><div class="value mono" id="liveAz">—</div></div>
+      </div>
+      <div class="reasoning" id="liveReason"></div>
+      <label for="liveDest" style="margin-top:14px;">Where are you heading? (optional)</label>
+      <input type="text" id="liveDest" list="places" placeholder="e.g. CBD" autocomplete="off">
+      <div class="weather-note" style="margin-top:6px;">Helps when the bus is stopped and GPS can't tell which way it is facing.</div>
+    </div>
+    <div class="alert-status" id="liveNote">Tracking works while Sunside is open and the screen is on. Phones pause GPS in the background.</div>
+    <div class="error" id="liveError"></div>
+  </div>
+
   <div class="card">
     <label for="from">From</label>
     <input type="text" id="from" list="places" placeholder="e.g. Rongai" autocomplete="off">
+    <div class="weather-live"><button type="button" id="useLocBtn">use my location</button><span class="weather-note" id="useLocNote"></span></div>
 
     <div class="swap-row">
       <button class="btn-swap" id="swapBtn" type="button">⇅ swap</button>
@@ -258,6 +320,19 @@
     </div>
 
     <div class="reasoning" id="reasoning"></div>
+  </div>
+
+  <div class="card" id="alertsCard">
+    <h2>Commute alerts</h2>
+    <p class="hint">Get a notification shortly before you leave telling you which side to sit on, without opening the app. Uses the sun preference you chose above.</p>
+    <div id="tripList"></div>
+    <button class="link-btn" id="addTripBtn" type="button">+ add another trip</button>
+    <button class="btn-primary" id="enableAlertsBtn" type="button">Turn on alerts</button>
+    <div class="alert-actions">
+      <button class="link-btn" id="testAlertBtn" type="button" style="display:none;">send a test</button>
+      <button class="link-btn danger" id="disableAlertsBtn" type="button" style="display:none;">turn off alerts</button>
+    </div>
+    <div class="alert-status" id="alertStatus"></div>
   </div>
 
 </div>
@@ -417,8 +492,8 @@ function showError(msg){
 }
 
 /* ---------- diagram drawing ---------- */
-function drawDiagram(recommendedSide, relAngle){
-  const svg = document.getElementById('diagram');
+function drawDiagram(recommendedSide, relAngle, svgEl){
+  const svg = svgEl || document.getElementById('diagram');
   svg.innerHTML = '';
   const ns = 'http://www.w3.org/2000/svg';
   const cx=110, cy=60;
@@ -539,6 +614,378 @@ document.getElementById('computeBtn').addEventListener('click', ()=>{
 
   drawDiagram(recommended, relAngle);
   document.getElementById('result').classList.add('show');
+});
+
+/* =====================================================================
+   Commute alerts (Web Push)
+   ===================================================================== */
+// After deploying the Worker (see SETUP.md), paste its URL here:
+const PUSH_API = 'https://sunside-push.YOUR-SUBDOMAIN.workers.dev';
+
+const DAY_LABELS = ['S','M','T','W','T','F','S']; // index = JS getDay(): 0 = Sunday
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const tripListEl = document.getElementById('tripList');
+const alertStatus = document.getElementById('alertStatus');
+const enableBtn = document.getElementById('enableAlertsBtn');
+const testBtn = document.getElementById('testAlertBtn');
+const disableBtn = document.getElementById('disableAlertsBtn');
+
+function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function newId(){ return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+function setAlertStatus(msg, bad){ alertStatus.textContent = msg; alertStatus.classList.toggle('bad', !!bad); }
+
+let trips = load('sunside.trips', null) || [{ id: newId(), from:'', to:'', time:'07:00', lead:15, days:[1,2,3,4,5] }];
+
+// remember the sun preference between visits
+avoidBtn.addEventListener('click', ()=> store('sunside.pref','avoid'));
+seekBtn.addEventListener('click', ()=> store('sunside.pref','seek'));
+if (load('sunside.pref', 'avoid') === 'seek') seekBtn.click();
+
+function renderTrips(){
+  tripListEl.innerHTML = '';
+  trips.forEach((t, idx)=>{
+    const box = document.createElement('div');
+    box.className = 'trip';
+    box.innerHTML = `
+      <div class="grid">
+        <div><label>From</label><input type="text" list="places" data-f="from" placeholder="e.g. Rongai" autocomplete="off"></div>
+        <div><label>To</label><input type="text" list="places" data-f="to" placeholder="e.g. CBD" autocomplete="off"></div>
+        <div><label>Leaving at</label><input type="time" data-f="time"></div>
+        <div><label>Alert me</label>
+          <select data-f="lead">
+            <option value="10">10 min before</option>
+            <option value="15">15 min before</option>
+            <option value="30">30 min before</option>
+            <option value="60">1 hour before</option>
+          </select></div>
+      </div>
+      <div class="chips"></div>
+      <div class="trip-foot"><span class="weather-note">Trip ${idx+1}</span>
+        <span><button class="link-btn" data-act="swap" type="button">swap direction</button>
+        ${trips.length > 1 ? '<button class="link-btn danger" data-act="remove" type="button" style="margin-left:12px;">remove</button>' : ''}</span></div>`;
+    box.querySelectorAll('[data-f]').forEach(inp=>{
+      const f = inp.dataset.f;
+      inp.value = t[f];
+      inp.addEventListener('input', ()=>{ t[f] = (f === 'lead') ? Number(inp.value) : inp.value; store('sunside.trips', trips); });
+    });
+    const chips = box.querySelector('.chips');
+    DAY_LABELS.forEach((lab, d)=>{
+      const c = document.createElement('button');
+      c.type = 'button'; c.className = 'chip' + (t.days.includes(d) ? ' on' : ''); c.textContent = lab;
+      c.setAttribute('aria-label', DAY_NAMES[d]);
+      c.addEventListener('click', ()=>{
+        t.days = t.days.includes(d) ? t.days.filter(x=>x!==d) : t.days.concat(d);
+        c.classList.toggle('on'); store('sunside.trips', trips);
+      });
+      chips.appendChild(c);
+    });
+    box.querySelector('[data-act="swap"]').addEventListener('click', ()=>{ const x=t.from; t.from=t.to; t.to=x; store('sunside.trips', trips); renderTrips(); });
+    const rm = box.querySelector('[data-act="remove"]');
+    if (rm) rm.addEventListener('click', ()=>{ trips = trips.filter(x=>x.id!==t.id); store('sunside.trips', trips); renderTrips(); });
+    tripListEl.appendChild(box);
+  });
+  document.getElementById('addTripBtn').style.display = trips.length >= 4 ? 'none' : 'inline-block';
+}
+document.getElementById('addTripBtn').addEventListener('click', ()=>{
+  const last = trips[trips.length-1];
+  // a second trip is usually the way home: default it to the reverse of the last one
+  trips.push({ id:newId(), from:last.to, to:last.from, time:'17:30', lead:last.lead, days:last.days.slice() });
+  store('sunside.trips', trips); renderTrips();
+});
+renderTrips();
+
+function urlB64ToBytes(b64){
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from(raw, c=>c.charCodeAt(0));
+}
+function bytesToB64u(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushConfigured = !PUSH_API.includes('YOUR-SUBDOMAIN');
+
+function pushSupportProblem(){
+  if (!pushConfigured) return 'Alerts need the Sunside push server first. Deploy the Worker from SETUP.md, then paste its URL into PUSH_API near the bottom of index.html.';
+  if (isIOS && !isStandalone) return 'On iPhone, first tap Share, then Add to Home Screen, and open Sunside from the new icon. Alerts only work from the installed app.';
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'This browser does not support push notifications.';
+  return null;
+}
+
+function canonicalName(s){ return Object.keys(PLACES).find(k=>k.toLowerCase()===s.trim().toLowerCase()); }
+
+function collectTrips(){
+  const out = [];
+  for (const [i, t] of trips.entries()){
+    const from = findPlace(t.from), to = findPlace(t.to);
+    if (!from) throw new Error(`Trip ${i+1}: pick a "From" area from the suggestions.`);
+    if (!to) throw new Error(`Trip ${i+1}: pick a "To" area from the suggestions.`);
+    if (!t.time) throw new Error(`Trip ${i+1}: set a leaving time.`);
+    if (!t.days.length) throw new Error(`Trip ${i+1}: choose at least one day.`);
+    out.push({ id:t.id, from:{name:canonicalName(t.from), lat:from[0], lon:from[1]}, to:{name:canonicalName(t.to), lat:to[0], lon:to[1]},
+               time:t.time, days:t.days, lead:t.lead, pref:prefMode });
+  }
+  return out;
+}
+
+async function api(path, body){
+  const res = await fetch(PUSH_API + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || ('server said ' + res.status));
+  return data;
+}
+
+function showOnState(on){
+  testBtn.style.display = disableBtn.style.display = on ? 'inline-block' : 'none';
+  enableBtn.textContent = on ? 'Save changes' : 'Turn on alerts';
+}
+
+enableBtn.addEventListener('click', async ()=>{
+  const problem = pushSupportProblem();
+  if (problem){ setAlertStatus(problem, true); return; }
+  let commutes;
+  try{ commutes = collectTrips(); }catch(e){ setAlertStatus(e.message, true); return; }
+
+  try{
+    setAlertStatus('Setting up…');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted'){ setAlertStatus('Notifications are blocked for Sunside. Allow them in your browser or phone settings, then try again.', true); return; }
+
+    const reg = await navigator.serviceWorker.ready;
+    const { key } = await (await fetch(PUSH_API + '/vapid-public-key')).json();
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && sub.options && sub.options.applicationServerKey && bytesToB64u(sub.options.applicationServerKey) !== key){
+      await sub.unsubscribe(); sub = null; // server key changed: start fresh
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToBytes(key) });
+
+    await api('/subscribe', { subscription: sub.toJSON(), tz: -new Date().getTimezoneOffset(), commutes });
+    showOnState(true);
+    setAlertStatus(`Alerts are on for ${commutes.length} trip${commutes.length>1?'s':''}. Tap "send a test" to check they reach you.`);
+  }catch(e){
+    setAlertStatus('Could not turn on alerts: ' + e.message, true);
+  }
+});
+
+testBtn.addEventListener('click', async ()=>{
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) throw new Error('not subscribed yet');
+    const r = await api('/test', { endpoint: sub.endpoint });
+    setAlertStatus(r.ok ? 'Test sent. It should pop up in a few seconds.' : `The push service rejected the test (status ${r.status}).`, !r.ok);
+  }catch(e){ setAlertStatus('Test failed: ' + e.message, true); }
+});
+
+disableBtn.addEventListener('click', async ()=>{
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub){ await api('/unsubscribe', { endpoint: sub.endpoint }).catch(()=>{}); await sub.unsubscribe(); }
+    showOnState(false);
+    setAlertStatus('Alerts are off.');
+  }catch(e){ setAlertStatus('Could not turn off alerts: ' + e.message, true); }
+});
+
+// reflect existing state when the page opens
+(async ()=>{
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub && Notification.permission === 'granted'){ showOnState(true); setAlertStatus('Alerts are on. Change the trips above and tap "Save changes" to update them.'); }
+  }catch(e){}
+})();
+
+/* =====================================================================
+   Live tracker (real-time GPS)
+   ===================================================================== */
+function haversine(a, b){ // metres between {lat,lon} points
+  const R = 6371000, dLat = toRad(b.lat - a.lat), dLon = toRad(b.lon - a.lon);
+  const h = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function nearestStop(lat, lon){
+  let best = null;
+  for (const [name, [la, lo]] of Object.entries(PLACES)){
+    const d = haversine({lat, lon}, {lat: la, lon: lo});
+    if (!best || d < best.d) best = { name, d };
+  }
+  return best;
+}
+const CARDINALS = ['N','NE','E','SE','S','SW','W','NW'];
+function cardinal(deg){ return CARDINALS[Math.round(norm360(deg) / 45) % 8]; }
+function geoErrorText(err){
+  if (err && err.code === 1) return 'Location is blocked for Sunside. Allow location access in your browser or phone settings, then try again.';
+  if (err && err.code === 2) return 'Your phone could not work out where you are. Try moving to a spot with a clearer view of the sky.';
+  if (err && err.code === 3) return 'Getting your location timed out. Try again in a moment.';
+  return 'Could not get your location.';
+}
+
+const liveBtn = document.getElementById('liveBtn');
+const livePanel = document.getElementById('livePanel');
+const liveErr = document.getElementById('liveError');
+const liveDiagram = document.getElementById('liveDiagram');
+const liveDest = document.getElementById('liveDest');
+
+let watchId = null, wakeLock = null;
+let lastFix = null, anchor = null, heading = null, headingSrc = null, headingAt = 0;
+let liveSky = null, liveSkyAt = 0;
+
+function setHeading(h, src){
+  if (heading === null) heading = norm360(h);
+  else {
+    const diff = ((h - heading + 540) % 360) - 180;        // shortest turn, -180..180
+    heading = norm360(heading + (Math.abs(diff) > 60 ? diff : diff * 0.5)); // smooth small wobble, follow real turns
+  }
+  headingSrc = src; headingAt = Date.now();
+}
+
+function updateHeading(fix){
+  const moving = typeof fix.speed === 'number' && isFinite(fix.speed) && fix.speed > 1.5; // > ~5 km/h
+  if (moving && typeof fix.heading === 'number' && isFinite(fix.heading)){ setHeading(fix.heading, 'gps'); anchor = fix; return; }
+  if (!anchor){ anchor = fix; return; }
+  const moved = haversine(anchor, fix);
+  if (moved >= Math.max(25, fix.accuracy || 0)){        // only trust movement bigger than GPS noise
+    setHeading(bearing(anchor.lat, anchor.lon, fix.lat, fix.lon), 'moved');
+    anchor = fix;
+  }
+}
+
+async function refreshLiveSky(lat, lon){
+  if (Date.now() - liveSkyAt < 10*60*1000) return;
+  liveSkyAt = Date.now();
+  try{
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=cloud_cover,weather_code`);
+    if (!res.ok) throw new Error('weather');
+    const d = await res.json();
+    const cloud = d.current.cloud_cover, code = d.current.weather_code;
+    liveSky = code >= 51 ? 'rain' : cloud > 70 ? 'overcast' : cloud > 25 ? 'partly' : 'clear';
+    renderLive();
+  }catch(e){ liveSky = null; liveSkyAt = Date.now() - 8*60*1000; } // fall back to the manual setting, retry in ~2 min
+}
+
+// Direction to use right now: fresh GPS heading, else toward the typed destination, else the last known one.
+function currentDirection(fix){
+  const fresh = heading !== null && (Date.now() - headingAt) < 120000;
+  if (fresh) return { deg: heading, note: headingSrc === 'gps' ? 'from your GPS heading' : 'from your recent movement' };
+  const dest = findPlace(liveDest.value || '');
+  if (dest) return { deg: bearing(fix.lat, fix.lon, dest[0], dest[1]), note: `estimated from here to ${canonicalName(liveDest.value)}` };
+  if (heading !== null) return { deg: heading, note: 'last known direction (you seem to be stopped)' };
+  return null;
+}
+
+function renderLive(){
+  if (!lastFix) return;
+  const fix = lastFix, now = new Date();
+  const sun = sunPosition(now, fix.lat, fix.lon);
+  const near = nearestStop(fix.lat, fix.lon);
+  const nearTxt = near.d <= 3000 ? `Near ${near.name}` : `${(near.d/1000).toFixed(1)} km from ${near.name}`;
+  document.getElementById('liveWhere').textContent = `${nearTxt} · GPS ±${Math.round(fix.accuracy || 0)} m`;
+  document.getElementById('liveAlt').textContent = sun.altitude.toFixed(1) + '°';
+  document.getElementById('liveAz').textContent = sun.azimuth.toFixed(1) + '°';
+  const kmh = (typeof fix.speed === 'number' && isFinite(fix.speed)) ? fix.speed * 3.6 : null;
+  document.getElementById('liveSpeed').textContent = kmh === null ? '—' : Math.round(kmh) + ' km/h';
+
+  const dir = currentDirection(fix);
+  const side = document.getElementById('liveSide'), sub = document.getElementById('liveSub'), why = document.getElementById('liveReason');
+  if (!dir){
+    document.getElementById('liveHeading').textContent = '—';
+    side.textContent = 'Start moving';
+    sub.textContent = 'I need a direction to work out the side';
+    why.textContent = 'GPS can only tell which way you are going once the bus is moving. You can also type where you are heading below.';
+    liveDiagram.innerHTML = '';
+    return;
+  }
+  document.getElementById('liveHeading').textContent = `${cardinal(dir.deg)} ${Math.round(dir.deg)}°`;
+
+  const sky = liveSky || weatherEl.value;
+  const skyWords = { clear:'Clear skies', partly:'Partly cloudy', overcast:'Heavy cloud', rain:'Rain' }[sky];
+  if (sun.altitude <= 0){
+    side.textContent = 'Either side'; sub.textContent = 'Sun is below the horizon';
+    why.textContent = `No direct sun right now, so sit wherever you like. Heading ${cardinal(dir.deg)} (${dir.note}).`;
+    liveDiagram.innerHTML = '';
+    return;
+  }
+  const rel = norm360(sun.azimuth - dir.deg);
+  const sunSide = (rel > 0 && rel < 180) ? 'right' : 'left';
+  const shade = sunSide === 'right' ? 'left' : 'right';
+  const seat = prefMode === 'avoid' ? shade : sunSide;
+
+  let extra = '';
+  if (sun.altitude > 70){ side.textContent = 'Either side'; sub.textContent = 'Sun is almost overhead'; extra = ' With the sun nearly overhead, seat choice barely matters.'; }
+  else {
+    side.textContent = seat === 'left' ? 'Left side' : 'Right side';
+    sub.textContent = (prefMode === 'avoid' ? 'to stay out of the sun' : 'to catch the sun') + ((sky === 'overcast' || sky === 'rain') ? ' (cloud is cutting the glare)' : '');
+    if (sun.altitude < 20) extra = ' The sun is low, so expect glare through the window.';
+  }
+  why.textContent = `You're heading ${cardinal(dir.deg)} (${Math.round(dir.deg)}°), ${dir.note}. The sun is at ${Math.round(sun.azimuth)}° azimuth and ${Math.round(sun.altitude)}° up, on the ${sunSide} side of the bus. ${skyWords}${liveSky ? ' right now' : ' (from your manual setting)'}.${extra}`;
+  drawDiagram(sun.altitude > 70 ? null : seat, rel, liveDiagram);
+}
+
+function onFix(pos){
+  const c = pos.coords;
+  lastFix = { lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, heading: c.heading, speed: c.speed, t: pos.timestamp };
+  liveErr.classList.remove('show');
+  document.getElementById('liveDot').classList.remove('idle');
+  updateHeading(lastFix);
+  refreshLiveSky(lastFix.lat, lastFix.lon);
+  renderLive();
+}
+function onGeoError(err){
+  liveErr.textContent = geoErrorText(err); liveErr.classList.add('show');
+  document.getElementById('liveDot').classList.add('idle');
+  if (err && err.code === 1) stopLive(false);
+}
+
+async function takeWakeLock(){
+  try{
+    if ('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+    }
+  }catch(e){ wakeLock = null; }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState === 'visible' && watchId !== null && !wakeLock) takeWakeLock();
+});
+
+function startLive(){
+  liveErr.classList.remove('show');
+  if (!('geolocation' in navigator)){ liveErr.textContent = 'This browser cannot access GPS.'; liveErr.classList.add('show'); return; }
+  lastFix = anchor = heading = headingSrc = null; headingAt = 0; liveSky = null; liveSkyAt = 0;
+  livePanel.style.display = 'block';
+  document.getElementById('liveWhere').textContent = 'Finding you…';
+  document.getElementById('liveDot').classList.add('idle');
+  liveBtn.textContent = 'Stop live tracking'; liveBtn.classList.add('btn-stop');
+  watchId = navigator.geolocation.watchPosition(onFix, onGeoError, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+  takeWakeLock();
+}
+function stopLive(hidePanel = true){
+  if (watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if (wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
+  liveBtn.textContent = 'Start live tracking'; liveBtn.classList.remove('btn-stop');
+  if (hidePanel) livePanel.style.display = 'none';
+}
+liveBtn.addEventListener('click', ()=>{ watchId === null ? startLive() : stopLive(); });
+liveDest.addEventListener('input', renderLive);
+avoidBtn.addEventListener('click', renderLive);
+seekBtn.addEventListener('click', renderLive);
+
+// "use my location" for the planner's From field: fill in the nearest known stop
+document.getElementById('useLocBtn').addEventListener('click', ()=>{
+  const note = document.getElementById('useLocNote');
+  if (!('geolocation' in navigator)){ note.textContent = 'GPS not available here.'; return; }
+  note.textContent = 'locating…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const n = nearestStop(pos.coords.latitude, pos.coords.longitude);
+    if (n.d > 10000){ note.textContent = 'No known stop within 10 km of you.'; return; }
+    fromEl.value = n.name;
+    note.textContent = `nearest stop: ${n.name} (${(n.d/1000).toFixed(1)} km away)`;
+  }, err=>{ note.textContent = geoErrorText(err); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
 });
 </script>
 </body>
